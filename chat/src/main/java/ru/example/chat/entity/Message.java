@@ -1,15 +1,12 @@
 package ru.example.chat.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-public class message {
-
+@Table(name="messages")
+public class Message {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
     private long id;
@@ -17,7 +14,7 @@ public class message {
     private String sender;
     private LocalDateTime time;
 
-    public message(String content,String sender, LocalDateTime time){
+    public Message(String content,String sender, LocalDateTime time){
         this.content=content;
         this.sender=sender;
         this.time=time;
