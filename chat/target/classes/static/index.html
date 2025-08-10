@@ -116,19 +116,26 @@
     const username = prompt('enter your name:') || 'user ' + Math.floor(Math.random() * 10);
     const users = new Set();
 
+// Типы сообщений
+const MESSAGE_TYPES = {
+    JOIN: 'JOIN',
+    LEAVE: 'LEAVE',
+    CHAT: 'CHAT',
+    ERROR: 'ERROR'
+};
     // подключение
     stompClient.connect({}, function(frame) {
         // общ сообщения
         stompClient.subscribe('/channel/public', function(message) {
             const msg = JSON.parse(message.body);
 
-            if (msg.type === 'JOIN') {
+            if (msg.type === MESSAGE_TYPES.JOIN) {
                 // добав нов пользователя
                 users.add(msg.sender);
                 updateUsersList();
                 showSystemMessage(`${msg.sender} joined the chat`);
             }
-            else if (msg.type === 'LEAVE') {
+            if (msg.type === MESSAGE_TYPES.LEAVE) {
                 // пользователь вышел
                 users.delete(msg.sender);
                 updateUsersList();
@@ -145,7 +152,7 @@
             JSON.stringify({
                 sender: username,
                 content: `${username} joined the chat!`,
-                type: 'JOIN'
+                type: MESSAGE_TYPES.JOIN
             }));
     });
 
@@ -160,7 +167,7 @@
                 JSON.stringify({
                     sender: username,
                     content: content,
-                    type: 'CHAT'
+                    type: MESSAGE_TYPES.CHAT
                 }));
             input.value = '';
         }
@@ -217,7 +224,7 @@
                 JSON.stringify({
                     sender: username,
                     content: `${username} left the chat`,
-                    type: 'LEAVE'
+                    type: MESSAGE_TYPES.LEAVE
                 }));
         }
     });
