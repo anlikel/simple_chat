@@ -5,54 +5,222 @@
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.0/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
-        #chat-container { max-width: 600px; margin: 0 auto; }
-        #message-area { height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; }
-        #message-form { display: flex; margin-top: 10px; }
-        #message-input { flex-grow: 1; padding: 5px; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .chat-wrapper {
+            display: flex;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        #chat-container {
+            flex: 3;
+            padding: 20px;
+            border-right: 1px solid #eee;
+        }
+        #users-container {
+            flex: 1;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        #message-area {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: white;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            background: #e3f2fd;
+            word-break: break-word;
+        }
+        .user-message {
+            background: #e8f5e9;
+            margin-left: 20%;
+        }
+        .system-message {
+            background: #fff3e0;
+            text-align: center;
+            font-style: italic;
+        }
+        #message-form {
+            display: flex;
+            gap: 10px;
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #message-form button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #message-form button:hover {
+            background: #45a049;
+        }
+        #users-list {
+            list-style: none;
+            padding: 0;
+        }
+        #users-list li {
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #4CAF50;
+        }
+        .users-title {
+            margin-top: 0;
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
     </style>
 </head>
 <body>
-<div id="chat-container">
-    <div id="message-area"></div>
-    <form id="message-form">
-        <input id="message-input" type="text" placeholder="Type a message..." autocomplete="off"/>
-        <button type="submit">Send</button>
-    </form>
+<div class="chat-wrapper">
+    <div id="chat-container">
+        <div id="message-area"></div>
+        <form id="message-form">
+            <input id="message-input" type="text" placeholder="input a message..." autocomplete="off"/>
+            <button type="submit">Send</button>
+        </form>
+    </div>
+    <div id="users-container">
+        <h3 class="users-title">Online Users (<span id="users-count">0</span>)</h3>
+        <ul id="users-list"></ul>
+    </div>
 </div>
 
 <script>
     const socket = new SockJS('/ws');
     const stompClient = Stomp.over(socket);
-    const username = prompt('Enter your name:') || 'Anonymous';
+    const username = prompt('enter your name:') || 'user ' + Math.floor(Math.random() * 10);
+    const users = new Set();
 
+    // подключение
     stompClient.connect({}, function(frame) {
-        // общ канал
+        // общ сообщения
         stompClient.subscribe('/channel/public', function(message) {
             const msg = JSON.parse(message.body);
-            showMessage(`${msg.sender}: ${msg.content}`);
+
+            if (msg.type === 'JOIN') {
+                // добав нов пользователя
+                users.add(msg.sender);
+                updateUsersList();
+                showSystemMessage(`${msg.sender} joined the chat`);
+            }
+            else if (msg.type === 'LEAVE') {
+                // пользователь вышел
+                users.delete(msg.sender);
+                updateUsersList();
+                showSystemMessage(`${msg.sender} left the chat`);
+            }
+            else {
+                // отправ сообщение
+                showChatMessage(msg.sender, msg.content, msg.sender === username);
+            }
         });
+
+        // сообщ о новом польз
+        stompClient.send("/app/chat.addUser", {},
+            JSON.stringify({
+                sender: username,
+                content: `${username} joined the chat!`,
+                type: 'JOIN'
+            }));
     });
 
+    // обработка отправки сообщ
     document.getElementById('message-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const input = document.getElementById('message-input');
         const content = input.value.trim();
 
         if(content) {
-            // отпр сообщ
             stompClient.send("/app/chat.sendMessage", {},
-                JSON.stringify({ content, sender: username }));
+                JSON.stringify({
+                    sender: username,
+                    content: content,
+                    type: 'CHAT'
+                }));
             input.value = '';
         }
     });
 
-    function showMessage(message) {
+    // обновл списка польз
+    function updateUsersList() {
+        const usersList = document.getElementById('users-list');
+        const usersCount = document.getElementById('users-count');
+
+        usersList.innerHTML = '';
+        usersCount.textContent = users.size;
+
+        users.forEach(user => {
+            const li = document.createElement('li');
+            li.textContent = user;
+            if (user === username) {
+                li.style.fontWeight = 'bold';
+                li.style.borderLeftColor = '#2196F3';
+            }
+            usersList.appendChild(li);
+        });
+    }
+
+    // сист сообщение
+    function showSystemMessage(message) {
         const area = document.getElementById('message-area');
         const messageElement = document.createElement('div');
+        messageElement.className = 'message system-message';
         messageElement.textContent = message;
         area.appendChild(messageElement);
         area.scrollTop = area.scrollHeight;
     }
+
+    // сооб в чате
+    function showChatMessage(sender, message, isCurrentUser) {
+        const area = document.getElementById('message-area');
+        const messageElement = document.createElement('div');
+        messageElement.className = isCurrentUser ? 'message user-message' : 'message';
+
+        const senderElement = document.createElement('strong');
+        senderElement.textContent = sender + ': ';
+        messageElement.appendChild(senderElement);
+        messageElement.appendChild(document.createTextNode(message));
+
+        area.appendChild(messageElement);
+        area.scrollTop = area.scrollHeight;
+    }
+
+    // закрываем окно чата
+    window.addEventListener('beforeunload', function() {
+        if (stompClient.connected) {
+            stompClient.send("/app/chat.userLeft", {},
+                JSON.stringify({
+                    sender: username,
+                    content: `${username} left the chat`,
+                    type: 'LEAVE'
+                }));
+        }
+    });
 </script>
 </body>
 </html>
