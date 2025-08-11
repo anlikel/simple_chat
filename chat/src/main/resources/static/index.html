@@ -111,43 +111,30 @@
 </div>
 
 <script>
+
+    const MESSAGE_TYPES = {
+        JOIN: 'JOIN',
+        LEAVE: 'LEAVE',
+        CHAT: 'CHAT',
+        ERROR: 'ERROR'
+    };
+
+    // Глобальные переменные
     const socket = new SockJS('/ws');
     const stompClient = Stomp.over(socket);
     const username = prompt('enter your name:') || 'user ' + Math.floor(Math.random() * 10);
-    const users = new Set();
 
-// Типы сообщений
-const MESSAGE_TYPES = {
-    JOIN: 'JOIN',
-    LEAVE: 'LEAVE',
-    CHAT: 'CHAT',
-    ERROR: 'ERROR'
-};
-    // подключение
+    // Подключение к чату
     stompClient.connect({}, function(frame) {
-        // общ сообщения
+        // Загружаем текущих пользователей при подключении
+        fetchActiveUsers();
+
         stompClient.subscribe('/channel/public', function(message) {
             const msg = JSON.parse(message.body);
-
-            if (msg.type === MESSAGE_TYPES.JOIN) {
-                // добав нов пользователя
-                users.add(msg.sender);
-                updateUsersList();
-                showSystemMessage(`${msg.sender} joined the chat`);
-            }
-            if (msg.type === MESSAGE_TYPES.LEAVE) {
-                // пользователь вышел
-                users.delete(msg.sender);
-                updateUsersList();
-                showSystemMessage(`${msg.sender} left the chat`);
-            }
-            else {
-                // отправ сообщение
-                showChatMessage(msg.sender, msg.content, msg.sender === username);
-            }
+            handleMessage(msg);
         });
 
-        // сообщ о новом польз
+        // Уведомляем о новом пользователе
         stompClient.send("/app/chat.addUser", {},
             JSON.stringify({
                 sender: username,
@@ -156,25 +143,39 @@ const MESSAGE_TYPES = {
             }));
     });
 
-    // обработка отправки сообщ
-    document.getElementById('message-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const input = document.getElementById('message-input');
-        const content = input.value.trim();
+    // Получение списка активных пользователей с сервера
+    function fetchActiveUsers() {
+        fetch('/api/chat/active-users')
+            .then(response => response.json())
+            .then(users => {
+                updateUsersList(users);
+            })
+            .catch(error => {
+                console.error('Error fetching active users:', error);
+            });
+    }
 
-        if(content) {
-            stompClient.send("/app/chat.sendMessage", {},
-                JSON.stringify({
-                    sender: username,
-                    content: content,
-                    type: MESSAGE_TYPES.CHAT
-                }));
-            input.value = '';
+    // Обработка сообщений
+    function handleMessage(msg) {
+        switch(msg.messageTypes) {
+            case MESSAGE_TYPES.JOIN:
+                showSystemMessage(`${msg.sender} joined the chat`);
+                fetchActiveUsers(); // Обновляем список после изменения
+                break;
+            case MESSAGE_TYPES.LEAVE:
+                showSystemMessage(`${msg.sender} left the chat`);
+                fetchActiveUsers(); // Обновляем список после изменения
+                break;
+            case MESSAGE_TYPES.CHAT:
+                showChatMessage(msg.sender, msg.content, msg.sender === username);
+                break;
+            default:
+                console.warn('Unknown message type:', msg.type);
         }
-    });
+    }
 
     // обновл списка польз
-    function updateUsersList() {
+    function updateUsersList(users) {
         const usersList = document.getElementById('users-list');
         const usersCount = document.getElementById('users-count');
 
@@ -217,6 +218,22 @@ const MESSAGE_TYPES = {
         area.scrollTop = area.scrollHeight;
     }
 
+        // Обработка отправки сообщения
+    document.getElementById('message-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const input = document.getElementById('message-input');
+        const content = input.value.trim();
+
+        if(content) {
+            stompClient.send("/app/chat.sendMessage", {},
+                JSON.stringify({
+                    sender: username,
+                    content: content,
+                    type: MESSAGE_TYPES.CHAT
+                }));
+            input.value = '';
+        }
+    });
     // закрываем окно чата
     window.addEventListener('beforeunload', function() {
         if (stompClient.connected) {

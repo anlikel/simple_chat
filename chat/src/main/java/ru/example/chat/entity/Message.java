@@ -1,6 +1,7 @@
 package ru.example.chat.entity;
 
 import jakarta.persistence.*;
+import ru.example.chat.MessageTypes;
 
 import java.time.LocalDateTime;
 
@@ -13,11 +14,13 @@ public class Message {
     private String content;
     private String sender;
     private LocalDateTime time;
+    private MessageTypes messageTypes;
 
-    public Message(String content,String sender, LocalDateTime time){
+    public Message(String content,String sender, LocalDateTime time,MessageTypes messageTypes){
         this.content=content;
         this.sender=sender;
         this.time=time;
+        this.messageTypes=null;
     }
 
     public long getId() {
@@ -50,5 +53,13 @@ public class Message {
 
     public void setTime(LocalDateTime time) {
         this.time = time;
+    }
+
+    public MessageTypes getMessageTypes() {
+        return messageTypes;
+    }
+
+    public void setMessageTypes(MessageTypes messageTypes) {
+        this.messageTypes = messageTypes;
     }
 }
