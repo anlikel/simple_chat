@@ -112,7 +112,7 @@
 
 <script>
 
-    const MESSAGE_TYPES = {
+    const MessageTypes = {
         JOIN: 'JOIN',
         LEAVE: 'LEAVE',
         CHAT: 'CHAT',
@@ -139,59 +139,69 @@
             JSON.stringify({
                 sender: username,
                 content: `${username} joined the chat!`,
-                type: MESSAGE_TYPES.JOIN
+                messageTypes: MessageTypes.JOIN
             }));
     });
 
-    // Получение списка активных пользователей с сервера
-    function fetchActiveUsers() {
-        fetch('/api/chat/active-users')
-            .then(response => response.json())
-            .then(users => {
+function fetchActiveUsers() {
+    fetch('/api/chat/active-users')
+        .then(response => {
+            if (!response.ok) throw new Error('network error');
+            return response.json();
+        })
+        .then(users => {
+            console.log('Active users:', users);
+            if (users && users.length > 0) {
                 updateUsersList(users);
-            })
-            .catch(error => {
-                console.error('Error fetching active users:', error);
-            });
-    }
+            } else {
+                updateUsersList([]);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
+            document.getElementById('users-list').innerHTML =
+                '<li style="color:red">Error loading users</li>';
+            document.getElementById('users-count').textContent = '0';
+        });
+}
 
     // Обработка сообщений
     function handleMessage(msg) {
         switch(msg.messageTypes) {
-            case MESSAGE_TYPES.JOIN:
+            case MessageTypes.JOIN:
                 showSystemMessage(`${msg.sender} joined the chat`);
                 fetchActiveUsers(); // Обновляем список после изменения
                 break;
-            case MESSAGE_TYPES.LEAVE:
+            case MessageTypes.LEAVE:
                 showSystemMessage(`${msg.sender} left the chat`);
                 fetchActiveUsers(); // Обновляем список после изменения
                 break;
-            case MESSAGE_TYPES.CHAT:
+            case MessageTypes.CHAT:
                 showChatMessage(msg.sender, msg.content, msg.sender === username);
                 break;
             default:
-                console.warn('Unknown message type:', msg.type);
+                console.warn('Unknown message type:', msg.messageTypes);
         }
     }
 
-    // обновл списка польз
-    function updateUsersList(users) {
-        const usersList = document.getElementById('users-list');
-        const usersCount = document.getElementById('users-count');
+// обновление списка
+function updateUsersList(users) {
+    const usersList = document.getElementById('users-list');
+    const usersCount = document.getElementById('users-count');
 
-        usersList.innerHTML = '';
-        usersCount.textContent = users.size;
+    usersList.innerHTML = '';
+    usersCount.textContent = users.length; // Используем length для массива
 
-        users.forEach(user => {
-            const li = document.createElement('li');
-            li.textContent = user;
-            if (user === username) {
-                li.style.fontWeight = 'bold';
-                li.style.borderLeftColor = '#2196F3';
-            }
-            usersList.appendChild(li);
-        });
-    }
+    users.forEach(user => {
+        const li = document.createElement('li');
+        li.textContent = user;
+        if (user === username) {
+            li.style.fontWeight = 'bold';
+            li.style.borderLeftColor = '#2196F3';
+        }
+        usersList.appendChild(li);
+    });
+}
 
     // сист сообщение
     function showSystemMessage(message) {
@@ -218,7 +228,7 @@
         area.scrollTop = area.scrollHeight;
     }
 
-        // Обработка отправки сообщения
+        // отправка сообщ
     document.getElementById('message-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const input = document.getElementById('message-input');
@@ -229,7 +239,7 @@
                 JSON.stringify({
                     sender: username,
                     content: content,
-                    type: MESSAGE_TYPES.CHAT
+                    messageTypes: MessageTypes.CHAT
                 }));
             input.value = '';
         }
@@ -241,7 +251,7 @@
                 JSON.stringify({
                     sender: username,
                     content: `${username} left the chat`,
-                    type: MESSAGE_TYPES.LEAVE
+                    messageTypes: MessageTypes.LEAVE
                 }));
         }
     });

@@ -6,13 +6,14 @@ import ru.example.chat.repositores.MessageRepository;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class ChatService {
     private final MessageRepository messageRepository;
-    private final Set<String> users=Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> users=ConcurrentHashMap.newKeySet();
 
     public ChatService(MessageRepository messageRepository){
         this.messageRepository=messageRepository;
@@ -31,7 +32,7 @@ public class ChatService {
     }
 
     public Set<String> getActiveUsers(){
-        return Collections.unmodifiableSet(users);
+        return new HashSet<>(users);
     }
 }
 

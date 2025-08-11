@@ -35,6 +35,7 @@ public class ChatController {
     public Message addUser(@Payload Message message, SimpMessageHeaderAccessor headerAccessor){
         headerAccessor.getSessionAttributes().put("username",message.getSender());
         message.setMessageTypes(MessageTypes.JOIN);
+        //message.setContent(message.getSender() + " join");
         chatService.addUser(message.getSender());
         return message;
     }

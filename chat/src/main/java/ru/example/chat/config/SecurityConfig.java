@@ -11,12 +11,17 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
-            http.csrf(csrf->csrf.disable())
-                    .authorizeHttpRequests(auth->auth
-                    .requestMatchers("/", "/index.html", "/ws/**").permitAll()
-                    .anyRequest().authenticated()
-            );
-            return http.build();
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/ws/**",
+                                "/api/chat/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                );
+        return http.build();
     }
 }
